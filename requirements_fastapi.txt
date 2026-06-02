@@ -1,0 +1,2 @@
+# Kept for backward compatibility with older setup notes.
+-r requirements.txt

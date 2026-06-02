@@ -1,0 +1,45 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Runtime state, logs, and local databases
+.runtime/
+usage_logs.csv
+usage_logs.csv.lock
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Node / frontend build output
+frontend/node_modules/
+frontend/dist/
+
+# Private documents and raw files
+*.docx
+*.pptx
+*.rtf
+*.pdf
+!data/sample/*.pdf
+data/raw/
+tech_specs/
+old_versions/
+
+# OS and editor files
+.DS_Store
+frontend/public/.DS_Store
+.vscode/

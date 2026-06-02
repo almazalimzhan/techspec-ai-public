@@ -1,0 +1,55 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --font-main: 'Geologica', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --c-bg:        #F7F8FA;
+  --c-surface:   #FFFFFF;
+  --c-border:    #E4E7EC;
+  --c-border-md: #CBD2DC;
+
+  --c-text-1:  #0F1117;
+  --c-text-2:  #4A5568;
+  --c-text-3:  #8A95A5;
+
+  --c-blue:      #185FA5;
+  --c-blue-lt:   #E6F1FB;
+  --c-blue-bd:   #B5D4F4;
+
+  --c-green:     #3B6D11;
+  --c-green-lt:  #EAF3DE;
+  --c-green-bd:  #C0DD97;
+
+  --c-amber:     #BA7517;
+  --c-amber-lt:  #FAEEDA;
+  --c-amber-bd:  #FAC775;
+
+  --c-red:       #A32D2D;
+  --c-red-lt:    #FCEBEB;
+  --c-red-bd:    #F7C1C1;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font-main);
+  background: var(--c-bg);
+  color: var(--c-text-1);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: var(--font-main); cursor: pointer; }
+input  { font-family: var(--font-main); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border-md); border-radius: 99px; }
