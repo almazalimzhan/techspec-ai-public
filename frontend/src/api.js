@@ -66,6 +66,29 @@ async function request(path, options, fallbackMessage, language) {
   }
 }
 
+async function requestText(path, fallbackMessage) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+  try {
+    const res = await fetch(`${BASE}${path}`, { signal: controller.signal })
+    if (!res.ok) {
+      throw new Error(fallbackMessage)
+    }
+    return res.text()
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(fallbackMessage)
+    }
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(fallbackMessage)
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 export async function uploadPdf(file, language) {
   const messages = getUiMessages(language)
   const form = new FormData()
@@ -88,3 +111,8 @@ export const getJsonFields = (sessionId, bin, lang) => post('/json-fields', { se
 export const getRisks      = (sessionId, bin, lang) => post('/risks',       { session_id: sessionId, customer_bin: bin, language: lang }, lang)
 export const askQuestion   = (sessionId, question, bin, lang) =>
   post('/ask', { session_id: sessionId, question, customer_bin: bin, language: lang }, lang)
+
+export const getHealth = (lang) => request('/health', { method: 'GET' }, 'Health check failed', lang)
+export const getReady = (lang) => request('/ready', { method: 'GET' }, 'Readiness check failed', lang)
+export const getLatestEval = (lang) => request('/eval/latest', { method: 'GET' }, 'Evaluation report check failed', lang)
+export const getMetricsText = () => requestText('/metrics', 'Metrics check failed')

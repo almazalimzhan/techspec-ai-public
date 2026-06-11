@@ -153,6 +153,12 @@ techspec_http_requests_total{method="POST",path="/upload",status="200"} 1
 techspec_http_request_latency_seconds_sum{method="POST",path="/summary",status="200"} 16.270936
 ```
 
+The latest RAG evaluation report is available after `scripts/evaluate_rag.py` has been run:
+
+```bash
+curl http://127.0.0.1:8000/eval/latest
+```
+
 ## End-to-End Smoke Test
 
 Upload the demo PDF:
@@ -225,6 +231,8 @@ To save a machine-readable report:
 python scripts/evaluate_rag.py --output rag_eval_report.json
 ```
 
+Without `--output`, the script writes the latest local report to `.runtime/rag_eval_latest.json`, which is what `/eval/latest` reads.
+
 ## Optional MLflow Tracking
 
 Install the optional experiment-tracking dependency:
@@ -260,7 +268,7 @@ docker compose exec backend python -m unittest discover -s tests -v
 Expected:
 
 ```text
-Ran 21 tests
+Ran 22 tests
 OK
 ```
 

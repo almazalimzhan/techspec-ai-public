@@ -1,10 +1,13 @@
 import asyncio
 import importlib
 import io
+import json
 import os
 import sys
+import tempfile
 import types
 import unittest
+from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 from fastapi.testclient import TestClient
@@ -110,6 +113,21 @@ class MainEndpointTests(unittest.TestCase):
 
         self.assertEqual(health_response.status_code, 200)
         self.assertIn('method="GET",path="/health",status="200"', metrics_response.text)
+
+    def test_latest_eval_report_reads_runtime_json(self):
+        main = load_main_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report_path = Path(tmpdir) / "rag_eval_latest.json"
+            report_path.write_text(
+                json.dumps({"summary": {"pass_rate": 1.0}, "results": []}),
+                encoding="utf-8",
+            )
+            main.EVAL_REPORT_FILE = report_path
+
+            response = main.get_latest_eval_report()
+
+        self.assertEqual(response["status"], "ready")
+        self.assertEqual(response["report"]["summary"]["pass_rate"], 1.0)
 
 
 if __name__ == "__main__":

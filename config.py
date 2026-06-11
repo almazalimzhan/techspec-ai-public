@@ -66,6 +66,7 @@ RATE_LIMIT_WINDOW_SECONDS = _env_int("RATE_LIMIT_WINDOW_SECONDS", 60)
 RATE_LIMIT_MAX_REQUESTS = _env_int("RATE_LIMIT_MAX_REQUESTS", 30)
 
 USAGE_LOG_FILE = Path(os.getenv("USAGE_LOG_FILE", "usage_logs.csv"))
+EVAL_REPORT_FILE = Path(os.getenv("EVAL_REPORT_FILE", ".runtime/rag_eval_latest.json"))
 
 VECTOR_BACKEND = os.getenv("VECTOR_BACKEND", "faiss").strip().lower() or "faiss"
 QDRANT_URL = os.getenv("QDRANT_URL", "http://127.0.0.1:6333").rstrip("/")

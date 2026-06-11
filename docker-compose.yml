@@ -33,6 +33,7 @@ services:
       RATE_LIMIT_MAX_REQUESTS: 30
       RATE_LIMIT_WINDOW_SECONDS: 60
       USAGE_LOG_FILE: /app/.runtime/usage_logs.csv
+      EVAL_REPORT_FILE: /app/.runtime/rag_eval_latest.json
       CORS_ALLOW_ORIGINS: http://localhost:8501,http://127.0.0.1:8501,http://localhost:5173,http://127.0.0.1:5173
     volumes:
       - techspec-runtime:/app/.runtime

@@ -6,6 +6,7 @@ import ActionCards from './components/ActionCards.jsx'
 import DocumentOverview from './components/DocumentOverview.jsx'
 import ResultBlock from './components/ResultBlock.jsx'
 import QABlock from './components/QABlock.jsx'
+import SystemPanel from './components/SystemPanel.jsx'
 import s from './App.module.css'
 
 export default function App() {
@@ -154,6 +155,8 @@ export default function App() {
 
           {/* Action error */}
           {error && <div className={`${s.alert} ${s.alertWarn}`}>{error}</div>}
+
+          <SystemPanel lang={lang} t={t} />
 
           {session && (
             <DocumentOverview key={session.session_id} session={session} t={t} />

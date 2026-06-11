@@ -20,6 +20,7 @@ import requests
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PDF = PROJECT_ROOT / "data" / "sample" / "sample_tech_spec_ru.pdf"
+DEFAULT_OUTPUT = PROJECT_ROOT / ".runtime" / "rag_eval_latest.json"
 
 
 @dataclass(frozen=True)
@@ -293,7 +294,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--language", default="Русский")
     parser.add_argument("--customer-bin", default="123456789012")
     parser.add_argument("--timeout", type=int, default=120)
-    parser.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="JSON output path for the latest report.")
     parser.add_argument("--mlflow-tracking-uri", default="", help="Optional MLflow tracking URI or local directory.")
     parser.add_argument("--mlflow-experiment", default="techspec-rag-eval")
     parser.add_argument("--mlflow-run-name", default=None)

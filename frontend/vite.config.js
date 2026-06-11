@@ -16,6 +16,8 @@ export default defineConfig({
       '/ask': proxyTarget,
       '/health': proxyTarget,
       '/ready': proxyTarget,
+      '/metrics': proxyTarget,
+      '/eval/latest': proxyTarget,
     },
   },
 })

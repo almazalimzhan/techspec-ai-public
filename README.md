@@ -107,6 +107,7 @@ Health and observability checks:
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
 curl http://127.0.0.1:8000/metrics
+curl http://127.0.0.1:8000/eval/latest
 ```
 
 ### 2. Local Backend
@@ -136,6 +137,7 @@ Health checks:
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
 curl http://127.0.0.1:8000/metrics
+curl http://127.0.0.1:8000/eval/latest
 ```
 
 ### 3. Frontend
@@ -147,6 +149,7 @@ npm run dev
 ```
 
 The frontend runs on `http://127.0.0.1:8501` and proxies API requests to `http://127.0.0.1:8000`.
+It includes a system panel for backend readiness, dependency status, API metrics, and the latest RAG evaluation report.
 
 ### 4. Optional Interfaces
 
@@ -198,6 +201,7 @@ The app does not report supervised model performance metrics because this projec
 - Qdrant-backed vector retrieval in Docker with FAISS fallback
 - Prometheus-style API metrics for uptime, request counts, statuses, and latency sums
 - RAG evaluation report with answer recall, context recall, pass rate, and latency
+- frontend system panel for readiness, metrics, and latest evaluation status
 
 ## Business Interpretation
 
@@ -244,3 +248,5 @@ RAG evaluation against a running backend:
 ```bash
 python scripts/evaluate_rag.py
 ```
+
+The latest report is written to `.runtime/rag_eval_latest.json` and can be read by the frontend through `/eval/latest`.

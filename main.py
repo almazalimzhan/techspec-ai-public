@@ -1,6 +1,7 @@
 """
 FastAPI backend — замена Streamlit app.py
 """
+import json
 import logging
 import secrets
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel
 from config import (
     API_AUTH_TOKEN,
     CORS_ALLOW_ORIGINS,
+    EVAL_REPORT_FILE,
     LLM_PROVIDER,
     MAX_UPLOAD_BYTES,
     RATE_LIMIT_MAX_REQUESTS,
@@ -321,6 +323,32 @@ def health():
 @app.get("/metrics", response_class=PlainTextResponse)
 def get_metrics():
     return metrics.render_prometheus()
+
+
+@app.get("/eval/latest")
+def get_latest_eval_report():
+    if not EVAL_REPORT_FILE.exists():
+        return {
+            "status": "missing",
+            "path": str(EVAL_REPORT_FILE),
+            "detail": "RAG evaluation report has not been generated yet.",
+        }
+
+    try:
+        report = json.loads(EVAL_REPORT_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.warning("Could not read RAG evaluation report: %s", exc)
+        return {
+            "status": "invalid",
+            "path": str(EVAL_REPORT_FILE),
+            "detail": "RAG evaluation report exists but cannot be parsed.",
+        }
+
+    return {
+        "status": "ready",
+        "path": str(EVAL_REPORT_FILE),
+        "report": report,
+    }
 
 
 @app.get("/ready")
