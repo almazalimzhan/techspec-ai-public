@@ -30,10 +30,12 @@ python scripts/generate_sample_pdf.py
 
 1. PDF pages are extracted with PyMuPDF.
 2. Text is cleaned and split into overlapping chunks.
-3. Embeddings are generated with Ollama and indexed with FAISS.
-4. Dense retrieval is combined with keyword scoring for procurement-specific questions.
-5. Prompt templates guide the LLM to produce task-specific outputs.
-6. Runtime sessions are stored in SQLite by default so FastAPI requests can share document state.
+3. Embeddings are generated with local Ollama `nomic-embed-text`.
+4. Docker runtime stores chunk vectors in Qdrant; FAISS remains available as an in-process fallback.
+5. Dense retrieval is combined with keyword scoring for procurement-specific questions.
+6. Prompt templates guide LiteLLM-compatible text-generation models to produce task-specific outputs.
+7. Runtime sessions are stored in SQLite by default so FastAPI requests can share document state.
+8. A small API-level RAG evaluation checks whether answers and retrieved context contain expected facts from the synthetic document.
 
 ## Repository Structure
 
@@ -43,19 +45,26 @@ python scripts/generate_sample_pdf.py
 ├── data/
 │   ├── README.md
 │   └── sample/
+├── docs/
+│   └── DEPLOYMENT.md
 ├── frontend/
 │   └── src/
 ├── scripts/
+│   ├── evaluate_rag.py
 │   └── generate_sample_pdf.py
 ├── tests/
+├── Dockerfile              # backend container image
+├── docker-compose.yml      # local backend runtime
 ├── app.py                  # optional Streamlit UI
 ├── main.py                 # FastAPI backend
+├── metrics.py              # Prometheus-style API metrics
+├── qdrant_store.py         # optional Qdrant vector-store integration
 ├── telegram_bot.py         # optional Telegram bot
 ├── services.py             # document analysis workflow
 ├── pdf_utils.py            # PDF extraction and chunking
 ├── embeddings.py           # embedding and FAISS index helpers
 ├── retrieval.py            # retrieval logic
-├── llm_clients.py          # Ollama / LiteLLM client wrapper
+├── llm_clients.py          # LiteLLM / Ollama client wrapper
 ├── requirements.txt
 ├── .env.example
 └── LICENSE
@@ -63,19 +72,52 @@ python scripts/generate_sample_pdf.py
 
 ## How To Run
 
-### 1. Backend
+For a more detailed deployment walkthrough, see `docs/DEPLOYMENT.md`.
+
+### 1. Docker Backend
+
+Create a local `.env` file from the template and fill in your LiteLLM-compatible gateway key:
+
+```bash
+cp .env.example .env
+```
+
+Text generation uses `LLM_PROVIDER=litellm` by default. Russian responses use `LLM_MODEL=gemma3-27b-32bit`, while Kazakh responses use `ALEM_MODEL=astanahub/alemllm`.
+
+Embeddings still use local Ollama with `nomic-embed-text`. Install and start Ollama on the host machine, then pull only the embedding model:
+
+```bash
+ollama pull nomic-embed-text
+```
+
+Build and run the FastAPI backend:
+
+```bash
+docker compose up --build backend
+```
+
+The container listens on `http://127.0.0.1:8000`. The compose file starts Qdrant, passes LiteLLM settings from `.env`, and points the backend to host Ollama only for embeddings through `OLLAMA_HOST=http://host.docker.internal:11434`.
+
+Health and observability checks:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
+curl http://127.0.0.1:8000/metrics
+```
+
+### 2. Local Backend
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-Install and start Ollama, then pull the local models used by default:
+Create `.env`, fill in the LiteLLM-compatible gateway key, then start Ollama and pull the local embedding model:
 
 ```bash
-ollama pull qwen3:8b
+cp .env.example .env
 ollama pull nomic-embed-text
 ```
 
@@ -90,9 +132,10 @@ Health checks:
 ```bash
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
+curl http://127.0.0.1:8000/metrics
 ```
 
-### 2. Frontend
+### 3. Frontend
 
 ```bash
 cd frontend
@@ -102,7 +145,7 @@ npm run dev
 
 The frontend runs on `http://127.0.0.1:8501` and proxies API requests to `http://127.0.0.1:8000`.
 
-### 3. Optional Interfaces
+### 4. Optional Interfaces
 
 Streamlit:
 
@@ -118,14 +161,32 @@ python telegram_bot.py
 
 The Telegram bot requires `TELEGRAM_BOT_TOKEN` in `.env`.
 
+### 5. RAG Evaluation
+
+After the backend is running, evaluate the full upload-and-question-answering path on the synthetic PDF:
+
+```bash
+python scripts/evaluate_rag.py
+```
+
+The script uploads `data/sample/sample_tech_spec_ru.pdf`, asks a small set of procurement questions, and reports:
+
+- `answer_recall`: share of expected facts found in the generated answer
+- `context_recall`: share of expected facts found in retrieved context
+- `pass_rate`: share of evaluation cases above the configured thresholds
+- `avg_latency_seconds`: average API latency for answer generation
+
 ## Key Results / Expected Outputs
 
-The app does not report model performance metrics because this project is a document-analysis prototype, not a supervised ML benchmark. Expected outputs are:
+The app does not report supervised model performance metrics because this project is a document-analysis prototype, not a supervised ML benchmark. Expected outputs are:
 
 - concise technical specification summary
 - JSON with extracted fields such as customer BIN, budget, deadline, payment terms, subject, and lots
 - supplier-facing risk notes
 - answers to user questions with retrieved context
+- Qdrant-backed vector retrieval in Docker with FAISS fallback
+- Prometheus-style API metrics for uptime, request counts, statuses, and latency sums
+- RAG evaluation report with answer recall, context recall, pass rate, and latency
 
 ## Business Interpretation
 
@@ -134,14 +195,14 @@ This workflow can help analysts and tender managers quickly triage procurement d
 ## Limitations
 
 - The quality of outputs depends on PDF text extraction quality and the configured LLM.
-- The default setup requires local Ollama models.
+- The default Docker setup uses Qdrant for vector retrieval, a LiteLLM-compatible gateway for text generation, and local Ollama for embeddings.
 - Kazakh generation currently uses a LiteLLM-compatible path and may require an external model gateway configured through `.env`.
-- No production deployment, monitoring, or formal evaluation benchmark is included.
+- Docker, API metrics, and a small synthetic RAG evaluation are included for local production-style demos, but no cloud deployment or large external benchmark is included.
 - Synthetic sample data may not cover all edge cases found in real procurement documents.
 
 ## Tech Stack
 
-Python, FastAPI, Streamlit, React, Vite, PyMuPDF, FAISS, NumPy, Ollama, LiteLLM-compatible APIs, SQLite, python-telegram-bot, unittest.
+Python, FastAPI, Docker, Qdrant, Streamlit, React, Vite, PyMuPDF, FAISS, NumPy, Ollama, LiteLLM-compatible APIs, SQLite, Prometheus-style metrics, python-telegram-bot, unittest.
 
 ## Privacy And Data Note
 
@@ -162,4 +223,10 @@ Frontend production build:
 ```bash
 cd frontend
 npm run build
+```
+
+RAG evaluation against a running backend:
+
+```bash
+python scripts/evaluate_rag.py
 ```

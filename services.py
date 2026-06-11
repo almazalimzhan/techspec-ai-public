@@ -372,12 +372,13 @@ def answer_question(
     index: faiss.IndexFlatL2,
     language: str,
     key_fields: Optional[Dict] = None,
+    session_id: Optional[str] = None,
 ) -> Tuple[str, str]:
     q_low = question.lower()
     settings = _get_language_settings(language)
     question = _apply_question_hints(question, q_low)
 
-    context = retrieve_context(question, chunks, index, k=QA_TOP_K)
+    context = retrieve_context(question, chunks, index, k=QA_TOP_K, session_id=session_id)
 
     lang_code    = settings["lang_code"]
     clean_chunks = [c for c in chunks if not _is_list_chunk(c)]
@@ -406,11 +407,12 @@ def generate_summary(
     customer_bin: str,
     language: str,
     key_fields: Optional[Dict] = None,
+    session_id: Optional[str] = None,
 ) -> str:
     settings = _get_language_settings(language)
     queries = settings["summary_queries"]
 
-    context  = retrieve_multi(queries, chunks, index, k_per_query=5)
+    context  = retrieve_multi(queries, chunks, index, k_per_query=5, session_id=session_id)
     kf_block = _format_key_fields(key_fields or {}, language)
     if kf_block:
         context = kf_block + "\n\n" + context
@@ -427,11 +429,12 @@ def extract_json_fields(
     customer_bin: str,
     language: str,
     key_fields: Optional[Dict] = None,
+    session_id: Optional[str] = None,
 ) -> str:
     settings = _get_language_settings(language)
     queries = settings["json_queries"]
 
-    context  = retrieve_multi(queries, chunks, index, k_per_query=5)
+    context  = retrieve_multi(queries, chunks, index, k_per_query=5, session_id=session_id)
     kf_block = _format_key_fields(key_fields or {}, language)
     if kf_block:
         context = kf_block + "\n\n" + context
@@ -467,10 +470,11 @@ def analyze_risks(
     index: faiss.IndexFlatL2,
     language: str,
     key_fields: Optional[Dict] = None,
+    session_id: Optional[str] = None,
 ) -> str:
     settings = _get_language_settings(language)
     query = settings["risk_query"]
-    context  = retrieve_context(query, chunks, index, k=RISK_TOP_K)
+    context  = retrieve_context(query, chunks, index, k=RISK_TOP_K, session_id=session_id)
     kf_block = _format_key_fields(key_fields or {}, language)
     if kf_block:
         context = kf_block + "\n\n" + context

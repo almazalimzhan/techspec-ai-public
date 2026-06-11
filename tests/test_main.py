@@ -7,19 +7,20 @@ import types
 import unittest
 
 from fastapi import HTTPException, UploadFile
+from fastapi.testclient import TestClient
 
 
 def load_main_module():
     fake_services = types.ModuleType("services")
-    fake_services.analyze_risks = lambda chunks, index, language, key_fields=None: "risk-ok"
+    fake_services.analyze_risks = lambda chunks, index, language, key_fields=None, session_id=None: "risk-ok"
     fake_services.answer_question = (
-        lambda question, chunks, index, language, key_fields=None: ("answer-ok", "ctx-ok")
+        lambda question, chunks, index, language, key_fields=None, session_id=None: ("answer-ok", "ctx-ok")
     )
     fake_services.extract_json_fields = (
-        lambda chunks, index, customer_bin, language, key_fields=None: '{"ok": true}'
+        lambda chunks, index, customer_bin, language, key_fields=None, session_id=None: '{"ok": true}'
     )
     fake_services.generate_summary = (
-        lambda chunks, index, customer_bin, language, key_fields=None: "summary-ok"
+        lambda chunks, index, customer_bin, language, key_fields=None, session_id=None: "summary-ok"
     )
     fake_services.prepare_document = (
         lambda pdf_bytes, language: (["chunk-1"], "fake-index", "preview-text", {"subject": "demo"})
@@ -33,8 +34,9 @@ def load_main_module():
     fake_ollama.list = lambda: {"models": []}
     os.environ["SESSION_BACKEND"] = "memory"
     os.environ["LLM_PROVIDER"] = "ollama"
+    os.environ["VECTOR_BACKEND"] = "faiss"
 
-    for module_name in ["config", "runtime_store", "llm_clients", "main"]:
+    for module_name in ["config", "runtime_store", "llm_clients", "qdrant_store", "main"]:
         sys.modules.pop(module_name, None)
 
     with unittest.mock.patch.dict(
@@ -74,7 +76,7 @@ class MainEndpointTests(unittest.TestCase):
         self.assertEqual(response["filename"], "demo.pdf")
         self.assertEqual(summary["result"], "summary-ok")
         self.assertEqual(answer["answer"], "answer-ok")
-        with unittest.mock.patch.object(main, "_check_ollama_ready", return_value=""):
+        with unittest.mock.patch.object(main, "_check_embedding_backend_ready", return_value=""):
             ready = main.ready()
         self.assertEqual(ready["embeddings"], "ok")
         self.assertEqual(ready["llm"], "ok")
@@ -88,6 +90,26 @@ class MainEndpointTests(unittest.TestCase):
             asyncio.run(main.upload_pdf(upload, "Русский"))
 
         self.assertEqual(exc.exception.status_code, 413)
+
+    def test_metrics_endpoint_renders_prometheus_text(self):
+        main = load_main_module()
+        main.metrics.record_request("GET", "/health", 200, 0.012)
+
+        response = main.get_metrics()
+
+        self.assertIn("techspec_app_uptime_seconds", response)
+        self.assertIn("techspec_http_requests_total", response)
+        self.assertIn('method="GET",path="/health",status="200"', response)
+
+    def test_health_request_is_recorded_by_metrics_middleware(self):
+        main = load_main_module()
+        client = TestClient(main.app)
+
+        health_response = client.get("/health")
+        metrics_response = client.get("/metrics")
+
+        self.assertEqual(health_response.status_code, 200)
+        self.assertIn('method="GET",path="/health",status="200"', metrics_response.text)
 
 
 if __name__ == "__main__":

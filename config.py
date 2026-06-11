@@ -35,9 +35,9 @@ def _env_list(name: str, default: Iterable[str]) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen3:8b")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemma3-27b-32bit").strip() or "gemma3-27b-32bit"
 EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").strip().lower() or "ollama"
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "litellm").strip().lower() or "litellm"
 
 LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "").strip()
 LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "").strip()
@@ -66,6 +66,11 @@ RATE_LIMIT_WINDOW_SECONDS = _env_int("RATE_LIMIT_WINDOW_SECONDS", 60)
 RATE_LIMIT_MAX_REQUESTS = _env_int("RATE_LIMIT_MAX_REQUESTS", 30)
 
 USAGE_LOG_FILE = Path(os.getenv("USAGE_LOG_FILE", "usage_logs.csv"))
+
+VECTOR_BACKEND = os.getenv("VECTOR_BACKEND", "faiss").strip().lower() or "faiss"
+QDRANT_URL = os.getenv("QDRANT_URL", "http://127.0.0.1:6333").rstrip("/")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "techspec_chunks").strip() or "techspec_chunks"
+QDRANT_TIMEOUT_SECONDS = _env_int("QDRANT_TIMEOUT_SECONDS", 15)
 
 QA_TOP_K = 6
 STRUCT_TOP_K = 12

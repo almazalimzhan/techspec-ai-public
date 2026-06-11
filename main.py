@@ -3,12 +3,13 @@ FastAPI backend — замена Streamlit app.py
 """
 import logging
 import secrets
+import time
 import uuid
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from config import (
@@ -19,8 +20,11 @@ from config import (
     RATE_LIMIT_MAX_REQUESTS,
     RATE_LIMIT_WINDOW_SECONDS,
     SUPPORTED_LANGUAGES,
+    VECTOR_BACKEND,
 )
 from logging_utils import log_usage
+from metrics import metrics
+from qdrant_store import QdrantError, check_qdrant_ready, is_qdrant_enabled, upsert_session_chunks
 from runtime_store import create_runtime_store
 from llm_clients import check_llm_backend_ready
 from services import (
@@ -121,9 +125,9 @@ def _enforce_rate_limit(request: Request) -> None:
         raise HTTPException(status_code=429, detail="Слишком много запросов. Попробуйте позже.")
 
 
-def _run_service(fn, *args):
+def _run_service(fn, *args, **kwargs):
     try:
-        return fn(*args)
+        return fn(*args, **kwargs)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -150,7 +154,7 @@ def get_session(session_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Сессия не найдена. Загрузите PDF заново.")
 
 
-def _check_ollama_ready() -> str:
+def _check_embedding_backend_ready() -> str:
     try:
         import ollama
 
@@ -160,18 +164,43 @@ def _check_ollama_ready() -> str:
         return str(exc)
 
 
+def _record_request_metrics(request: Request, status_code: int, start: float) -> None:
+    elapsed = time.perf_counter() - start
+    metrics.record_request(request.method, request.url.path, status_code, elapsed)
+
+
+def _index_session_vectors(session_id: str, chunks: list, index) -> str:
+    if not is_qdrant_enabled():
+        return "faiss"
+
+    try:
+        upsert_session_chunks(session_id, chunks, index)
+    except QdrantError as exc:
+        logger.warning("Qdrant indexing skipped; FAISS fallback will be used: %s", exc)
+        return "faiss"
+
+    return "qdrant"
+
+
 @app.middleware("http")
 async def protect_api(request: Request, call_next):
-    if request.method == "OPTIONS" or request.url.path == "/health":
-        return await call_next(request)
+    start = time.perf_counter()
+
+    if request.method == "OPTIONS" or request.url.path in {"/health", "/metrics"}:
+        response = await call_next(request)
+        _record_request_metrics(request, response.status_code, start)
+        return response
 
     try:
         _authorize_request(request)
         _enforce_rate_limit(request)
     except HTTPException as exc:
+        _record_request_metrics(request, exc.status_code, start)
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-    return await call_next(request)
+    response = await call_next(request)
+    _record_request_metrics(request, response.status_code, start)
+    return response
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
@@ -191,6 +220,7 @@ async def upload_pdf(
         raise
 
     session_id = uuid.uuid4().hex
+    vector_backend = _index_session_vectors(session_id, chunks, index)
     store.save_session(session_id, {
         "chunks": chunks,
         "index": index,
@@ -198,6 +228,7 @@ async def upload_pdf(
         "language": language,
         "preview": preview,
         "key_fields": key_fields,
+        "vector_backend": vector_backend,
     })
     return {
         "session_id": session_id,
@@ -205,6 +236,7 @@ async def upload_pdf(
         "chunk_count": len(chunks),
         "preview": preview[:500],
         "key_fields": key_fields,
+        "vector_backend": vector_backend,
     }
 
 
@@ -221,6 +253,7 @@ def get_summary(req: AnalyzeRequest):
         customer_bin,
         language,
         s.get("key_fields"),
+        session_id=req.session_id,
     )
     return {"result": result}
 
@@ -238,6 +271,7 @@ def get_json_fields(req: AnalyzeRequest):
         customer_bin,
         language,
         s.get("key_fields"),
+        session_id=req.session_id,
     )
     return {"result": result}
 
@@ -248,7 +282,14 @@ def get_risks(req: AnalyzeRequest):
     s = get_session(req.session_id)
     customer_bin = _validate_customer_bin(req.customer_bin or "", required=False)
     _safe_log_usage(customer_bin, language, s["filename"], interface="react")
-    result = _run_service(analyze_risks, s["chunks"], s["index"], language, s.get("key_fields"))
+    result = _run_service(
+        analyze_risks,
+        s["chunks"],
+        s["index"],
+        language,
+        s.get("key_fields"),
+        req.session_id,
+    )
     return {"result": result}
 
 
@@ -267,6 +308,7 @@ def ask_question(req: AskRequest):
         s["index"],
         language,
         s.get("key_fields"),
+        session_id=req.session_id,
     )
     return {"answer": answer, "context": context}
 
@@ -276,17 +318,27 @@ def health():
     return {"status": "ok", "session_backend": store.backend_name}
 
 
+@app.get("/metrics", response_class=PlainTextResponse)
+def get_metrics():
+    return metrics.render_prometheus()
+
+
 @app.get("/ready")
 def ready():
-    embeddings_error = _check_ollama_ready()
+    embeddings_error = _check_embedding_backend_ready()
     llm_error = check_llm_backend_ready()
+    qdrant_error = check_qdrant_ready()
     payload = {
-        "status": "ok" if not embeddings_error and not llm_error else "degraded",
+        "status": "ok" if not embeddings_error and not llm_error and not qdrant_error else "degraded",
         "session_backend": store.backend_name,
         "auth_enabled": bool(API_AUTH_TOKEN),
         "llm_provider": LLM_PROVIDER,
+        "vector_backend": VECTOR_BACKEND,
     }
-    if embeddings_error or llm_error:
+    if is_qdrant_enabled():
+        payload["qdrant"] = "ok" if not qdrant_error else qdrant_error
+
+    if embeddings_error or llm_error or qdrant_error:
         payload["embeddings"] = "ok" if not embeddings_error else embeddings_error
         payload["llm"] = "ok" if not llm_error else llm_error
         raise HTTPException(status_code=503, detail=payload)

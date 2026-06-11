@@ -9,7 +9,7 @@ UI = {
         "bin_label": "БИН заказчика*",
         "bin_placeholder": "000000000000",
         "bin_note": "БИН обязателен для Summary и JSON.",
-        "models_note": "Русский: локально через Ollama",
+        "models_note": "Русский: через LiteLLM-compatible модель",
         "extract_preview": "Показать фрагмент извлеченного текста",
         "preview_empty": "Загрузите PDF, чтобы увидеть превью текста.",
         "ready": "Готово.",
