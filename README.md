@@ -66,6 +66,7 @@ python scripts/generate_sample_pdf.py
 ├── retrieval.py            # retrieval logic
 ├── llm_clients.py          # LiteLLM / Ollama client wrapper
 ├── requirements.txt
+├── requirements-mlflow.txt # optional experiment tracking dependencies
 ├── .env.example
 └── LICENSE
 ```
@@ -176,6 +177,14 @@ The script uploads `data/sample/sample_tech_spec_ru.pdf`, asks a small set of pr
 - `pass_rate`: share of evaluation cases above the configured thresholds
 - `avg_latency_seconds`: average API latency for answer generation
 
+Optional MLflow tracking:
+
+```bash
+pip install -r requirements-mlflow.txt
+python scripts/evaluate_rag.py --mlflow-tracking-uri .runtime/mlruns --mlflow-experiment techspec-rag-eval
+mlflow ui --backend-store-uri .runtime/mlruns
+```
+
 ## Key Results / Expected Outputs
 
 The app does not report supervised model performance metrics because this project is a document-analysis prototype, not a supervised ML benchmark. Expected outputs are:
@@ -202,7 +211,7 @@ This workflow can help analysts and tender managers quickly triage procurement d
 
 ## Tech Stack
 
-Python, FastAPI, Docker, Qdrant, Streamlit, React, Vite, PyMuPDF, FAISS, NumPy, Ollama, LiteLLM-compatible APIs, SQLite, Prometheus-style metrics, python-telegram-bot, unittest.
+Python, FastAPI, Docker, Qdrant, Streamlit, React, Vite, PyMuPDF, FAISS, NumPy, Ollama, LiteLLM-compatible APIs, SQLite, Prometheus-style metrics, optional MLflow tracking, python-telegram-bot, unittest.
 
 ## Privacy And Data Note
 

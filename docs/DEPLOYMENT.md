@@ -225,6 +225,30 @@ To save a machine-readable report:
 python scripts/evaluate_rag.py --output rag_eval_report.json
 ```
 
+## Optional MLflow Tracking
+
+Install the optional experiment-tracking dependency:
+
+```bash
+pip install -r requirements-mlflow.txt
+```
+
+Run the same evaluation and log metrics to a local MLflow file store:
+
+```bash
+python scripts/evaluate_rag.py \
+  --mlflow-tracking-uri .runtime/mlruns \
+  --mlflow-experiment techspec-rag-eval
+```
+
+Open the local MLflow UI:
+
+```bash
+mlflow ui --backend-store-uri .runtime/mlruns
+```
+
+The eval run logs overall metrics such as `pass_rate`, `avg_answer_recall`, `avg_context_recall`, and `avg_latency_seconds`. It also logs per-case metrics, for example `case_payment_terms_answer_recall`, and stores `rag_eval_report.json` as an artifact.
+
 ## Container Tests
 
 Run the test suite inside the same image used by Docker Compose:

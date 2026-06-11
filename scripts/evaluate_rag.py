@@ -75,6 +75,20 @@ def recall_score(matched: list[str], terms: list[str]) -> float:
     return len(matched) / len(terms)
 
 
+def metric_key(*parts: str) -> str:
+    raw_key = "_".join(parts)
+    safe_key = re.sub(r"[^A-Za-z0-9_.-]+", "_", raw_key)
+    return safe_key.strip("_")
+
+
+def normalize_mlflow_tracking_uri(uri: str) -> str:
+    if not uri:
+        return ""
+    if "://" in uri:
+        return uri
+    return Path(uri).expanduser().resolve().as_uri()
+
+
 def default_eval_cases() -> list[EvalCase]:
     return [
         EvalCase(
@@ -190,6 +204,61 @@ def summarize_results(results: list[CaseResult]) -> dict[str, Any]:
     }
 
 
+def build_report_payload(upload: dict[str, Any], results: list[CaseResult], summary: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "upload": upload,
+        "summary": summary,
+        "results": [asdict(item) for item in results],
+    }
+
+
+def log_to_mlflow(
+    tracking_uri: str,
+    experiment_name: str,
+    run_name: str | None,
+    payload: dict[str, Any],
+    run_params: dict[str, Any],
+) -> None:
+    try:
+        import mlflow
+    except ImportError as exc:
+        raise RuntimeError(
+            "MLflow is not installed. Install optional dependencies with: "
+            "pip install -r requirements-mlflow.txt"
+        ) from exc
+
+    normalized_uri = normalize_mlflow_tracking_uri(tracking_uri)
+    mlflow.set_tracking_uri(normalized_uri)
+    mlflow.set_experiment(experiment_name)
+
+    upload = payload["upload"]
+    summary = payload["summary"]
+    results = payload["results"]
+
+    params = {
+        **run_params,
+        "filename": upload.get("filename"),
+        "vector_backend": upload.get("vector_backend", "unknown"),
+        "chunk_count": upload.get("chunk_count"),
+    }
+
+    with mlflow.start_run(run_name=run_name):
+        mlflow.log_params({key: value for key, value in params.items() if value is not None})
+
+        for key, value in summary.items():
+            if isinstance(value, (int, float)):
+                mlflow.log_metric(key, float(value))
+
+        for result in results:
+            prefix = metric_key("case", result["case_id"])
+            mlflow.log_metric(f"{prefix}_passed", 1.0 if result["passed"] else 0.0)
+            mlflow.log_metric(f"{prefix}_answer_recall", float(result["answer_recall"]))
+            mlflow.log_metric(f"{prefix}_context_recall", float(result["context_recall"]))
+            mlflow.log_metric(f"{prefix}_latency_seconds", float(result["latency_seconds"]))
+
+        mlflow.log_dict(payload, "rag_eval_report.json")
+
+
 def print_report(upload: dict[str, Any], results: list[CaseResult], summary: dict[str, Any]) -> None:
     print("RAG evaluation")
     print(f"- session_id: {upload.get('session_id')}")
@@ -225,6 +294,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--customer-bin", default="123456789012")
     parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--output", type=Path, default=None, help="Optional JSON output path.")
+    parser.add_argument("--mlflow-tracking-uri", default="", help="Optional MLflow tracking URI or local directory.")
+    parser.add_argument("--mlflow-experiment", default="techspec-rag-eval")
+    parser.add_argument("--mlflow-run-name", default=None)
     return parser.parse_args()
 
 
@@ -248,17 +320,30 @@ def main() -> int:
 
     print_report(upload, results, summary)
 
-    payload = {
-        "upload": upload,
-        "summary": summary,
-        "results": [asdict(item) for item in results],
-    }
+    payload = build_report_payload(upload, results, summary)
 
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         print()
         print(f"Wrote {args.output}")
+
+    if args.mlflow_tracking_uri:
+        log_to_mlflow(
+            tracking_uri=args.mlflow_tracking_uri,
+            experiment_name=args.mlflow_experiment,
+            run_name=args.mlflow_run_name,
+            payload=payload,
+            run_params={
+                "base_url": args.base_url,
+                "pdf": str(args.pdf),
+                "language": args.language,
+                "customer_bin": args.customer_bin,
+                "timeout_seconds": args.timeout,
+            },
+        )
+        print()
+        print(f"Logged MLflow run to {normalize_mlflow_tracking_uri(args.mlflow_tracking_uri)}")
 
     return 0 if summary["passed"] == summary["cases"] else 1
 
