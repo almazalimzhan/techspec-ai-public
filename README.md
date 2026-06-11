@@ -1,5 +1,7 @@
 # TechSpec AI: Procurement PDF Analyzer
 
+[![CI](https://github.com/almazalimzhan/techspec-ai-public/actions/workflows/ci.yml/badge.svg)](https://github.com/almazalimzhan/techspec-ai-public/actions/workflows/ci.yml)
+
 TechSpec AI is a portfolio prototype for analyzing technical specification PDFs from procurement workflows. It combines PDF text extraction, embeddings, semantic retrieval, and LLM prompts to produce summaries, structured JSON fields, risk notes, and document-level Q&A in Russian and Kazakh.
 
 ## Business Problem
@@ -220,6 +222,8 @@ This repository is prepared for public portfolio use. It excludes real client/co
 If an old version of this project was already pushed publicly with real documents or secrets, delete that repository or rewrite its history before republishing, and rotate any exposed tokens.
 
 ## Verification
+
+GitHub Actions runs the backend test suite and frontend production build on every push to `main` and on pull requests.
 
 Backend smoke tests:
 

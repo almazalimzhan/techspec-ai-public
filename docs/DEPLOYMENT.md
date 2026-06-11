@@ -260,9 +260,18 @@ docker compose exec backend python -m unittest discover -s tests -v
 Expected:
 
 ```text
-Ran 18 tests
+Ran 21 tests
 OK
 ```
+
+## Continuous Integration
+
+GitHub Actions runs two checks on pushes to `main` and on pull requests:
+
+- `backend-tests`: installs Python dependencies and runs `python -m unittest discover -s tests -v`
+- `frontend-build`: installs frontend dependencies with `npm ci` and runs `npm run build`
+
+The workflow file is `.github/workflows/ci.yml`.
 
 ## Common Failures
 
@@ -339,3 +348,4 @@ This deployment setup demonstrates skills that are relevant for production ML an
 - external LLM gateway integration
 - end-to-end API smoke testing
 - small RAG evaluation with answer recall, context recall, pass rate, and latency
+- GitHub Actions CI for backend tests and frontend build
