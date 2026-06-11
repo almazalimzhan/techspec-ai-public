@@ -223,7 +223,7 @@ If an old version of this project was already pushed publicly with real document
 
 ## Verification
 
-GitHub Actions runs the backend test suite and frontend production build on every push to `main` and on pull requests.
+GitHub Actions runs the backend test suite, frontend dependency audit, and frontend production build on every push to `main` and on pull requests. The frontend audit fails on high or critical npm vulnerabilities.
 
 Backend smoke tests:
 
@@ -235,6 +235,7 @@ Frontend production build:
 
 ```bash
 cd frontend
+npm audit --audit-level=high
 npm run build
 ```
 

@@ -269,9 +269,17 @@ OK
 GitHub Actions runs two checks on pushes to `main` and on pull requests:
 
 - `backend-tests`: installs Python dependencies and runs `python -m unittest discover -s tests -v`
-- `frontend-build`: installs frontend dependencies with `npm ci` and runs `npm run build`
+- `frontend-build`: installs frontend dependencies with `npm ci`, runs `npm audit --audit-level=high`, and runs `npm run build`
 
 The workflow file is `.github/workflows/ci.yml`.
+
+Dependabot checks for dependency updates weekly:
+
+- Python requirements in `/`
+- npm dependencies in `/frontend`
+- GitHub Actions versions in `.github/workflows`
+
+The Dependabot config is `.github/dependabot.yml`.
 
 ## Common Failures
 
@@ -333,6 +341,7 @@ docker exec techspec-ai-backend python -c "import urllib.request; print(urllib.r
 - Keep real API keys out of `.env.example`, README files, screenshots, and logs.
 - Rotate any key that was ever pushed to a public repository.
 - The public demo uses synthetic data only.
+- CI blocks high and critical frontend dependency vulnerabilities with `npm audit --audit-level=high`.
 
 ## What This Demonstrates
 
@@ -349,3 +358,4 @@ This deployment setup demonstrates skills that are relevant for production ML an
 - end-to-end API smoke testing
 - small RAG evaluation with answer recall, context recall, pass rate, and latency
 - GitHub Actions CI for backend tests and frontend build
+- Dependabot updates for Python, npm, and GitHub Actions dependencies
