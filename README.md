@@ -60,6 +60,7 @@ python scripts/generate_sample_pdf.py
 ├── app.py                  # optional Streamlit UI
 ├── main.py                 # FastAPI backend
 ├── metrics.py              # Prometheus-style API metrics
+├── monitoring/             # Prometheus and Grafana provisioning
 ├── qdrant_store.py         # optional Qdrant vector-store integration
 ├── telegram_bot.py         # optional Telegram bot
 ├── services.py             # document analysis workflow
@@ -109,6 +110,15 @@ curl http://127.0.0.1:8000/ready
 curl http://127.0.0.1:8000/metrics
 curl http://127.0.0.1:8000/eval/latest
 ```
+
+Optional monitoring stack:
+
+```bash
+docker compose up -d prometheus grafana
+```
+
+- Prometheus: `http://127.0.0.1:9090`
+- Grafana dashboard: `http://127.0.0.1:3001/d/techspec-overview/techspec-ai-observability`
 
 ### 2. Local Backend
 
@@ -200,6 +210,7 @@ The app does not report supervised model performance metrics because this projec
 - answers to user questions with retrieved context
 - Qdrant-backed vector retrieval in Docker with FAISS fallback
 - Prometheus-style API metrics for uptime, request counts, statuses, and latency sums
+- Prometheus and Grafana local monitoring dashboard
 - RAG evaluation report with answer recall, context recall, pass rate, and latency
 - frontend system panel for readiness, metrics, and latest evaluation status
 
@@ -217,7 +228,7 @@ This workflow can help analysts and tender managers quickly triage procurement d
 
 ## Tech Stack
 
-Python, FastAPI, Docker, Qdrant, Streamlit, React, Vite, PyMuPDF, FAISS, NumPy, Ollama, LiteLLM-compatible APIs, SQLite, Prometheus-style metrics, optional MLflow tracking, python-telegram-bot, unittest.
+Python, FastAPI, Docker, Qdrant, Prometheus, Grafana, Streamlit, React, Vite, PyMuPDF, FAISS, NumPy, Ollama, LiteLLM-compatible APIs, SQLite, optional MLflow tracking, python-telegram-bot, unittest.
 
 ## Privacy And Data Note
 

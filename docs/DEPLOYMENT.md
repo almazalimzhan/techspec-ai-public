@@ -9,6 +9,8 @@ User / frontend
     -> FastAPI backend in Docker
     -> SQLite runtime session store
     -> Qdrant vector database in Docker
+    -> Prometheus metrics scraper in Docker
+    -> Grafana dashboard in Docker
     -> FAISS in-process fallback
     -> Ollama on the host for nomic-embed-text embeddings
     -> LiteLLM-compatible gateway for text generation
@@ -22,6 +24,8 @@ The current split is intentional:
 - `FAISS` remains available as a local fallback if Qdrant is disabled or unavailable.
 - `Docker Compose` runs the backend with stable environment variables, ports, volumes, and health checks.
 - `/metrics` exposes Prometheus-style API metrics for local monitoring demos.
+- `Prometheus` scrapes backend metrics from `/metrics`.
+- `Grafana` provisions a local dashboard for API uptime, request counts, status codes, and latency.
 
 ## Environment Files
 
@@ -157,6 +161,45 @@ The latest RAG evaluation report is available after `scripts/evaluate_rag.py` ha
 
 ```bash
 curl http://127.0.0.1:8000/eval/latest
+```
+
+## Prometheus And Grafana
+
+Start the monitoring stack after the backend is running:
+
+```bash
+docker compose up -d prometheus grafana
+```
+
+Prometheus scrapes the backend every 5 seconds:
+
+```bash
+open http://127.0.0.1:9090
+```
+
+In Prometheus, check **Status -> Targets** and confirm `techspec-backend` is `UP`.
+
+Grafana is provisioned with an anonymous local viewer and a ready-made dashboard:
+
+```bash
+open http://127.0.0.1:3001/d/techspec-overview/techspec-ai-observability
+```
+
+The dashboard shows:
+
+- backend uptime
+- total HTTP requests
+- 4xx/5xx error responses
+- request rate by path and status
+- average latency by path
+- cumulative requests grouped by path and status
+
+Generate traffic if the dashboard is empty:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
+python scripts/evaluate_rag.py
 ```
 
 ## End-to-End Smoke Test
@@ -359,6 +402,7 @@ This deployment setup demonstrates skills that are relevant for production ML an
 - environment-based configuration
 - readiness checks for external dependencies
 - Prometheus-style metrics
+- Prometheus scraper and Grafana dashboard
 - Qdrant vector database integration
 - FAISS fallback retrieval
 - local model dependency for embeddings
