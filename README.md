@@ -4,6 +4,28 @@
 
 TechSpec AI is a portfolio prototype for analyzing technical specification PDFs from procurement workflows. It combines PDF text extraction, embeddings, semantic retrieval, and LLM prompts to produce summaries, structured JSON fields, risk notes, and document-level Q&A in Russian and Kazakh.
 
+## Portfolio Snapshot
+
+This repository is intentionally shaped as a production-style ML/LLM portfolio project rather than a notebook-only demo. The main engineering focus is not only RAG quality, but also service readiness, repeatable local deployment, observability, and safe public packaging.
+
+- **Domain:** procurement and technical specification review
+- **ML/AI scope:** PDF extraction, embeddings, hybrid retrieval, RAG Q&A, prompt-based structured extraction
+- **Production scope:** FastAPI service, Docker Compose, Qdrant vector storage, readiness checks, API metrics, Prometheus, Grafana, CI, dependency audit
+- **Evaluation scope:** small synthetic API-level RAG regression test with answer recall, context recall, pass rate, and latency
+- **Public data policy:** synthetic sample document only; real company/client documents, runtime logs, secrets, and local databases are excluded
+
+For a short interview-oriented project summary, see `docs/PORTFOLIO.md`.
+
+## Local Demo Screenshots
+
+Frontend system panel with dependency status, API metrics, and latest RAG evaluation:
+
+![Frontend system panel](docs/assets/frontend-system-panel.png)
+
+Grafana dashboard backed by Prometheus metrics from the FastAPI service:
+
+![Grafana observability dashboard](docs/assets/grafana-dashboard.png)
+
 ## Business Problem
 
 Procurement and sales teams often review long technical specification documents under time pressure. Key information such as service scope, deadlines, payment terms, customer identifiers, technical constraints, and supplier risks can be scattered across many pages. Manual review is slow and error-prone.
@@ -39,6 +61,26 @@ python scripts/generate_sample_pdf.py
 7. Runtime sessions are stored in SQLite by default so FastAPI requests can share document state.
 8. A small API-level RAG evaluation checks whether answers and retrieved context contain expected facts from the synthetic document.
 
+## Architecture Overview
+
+```mermaid
+flowchart LR
+    User["User / React UI"] --> API["FastAPI backend"]
+    API --> Sessions["SQLite session store"]
+    API --> PDF["PDF extraction and chunking"]
+    PDF --> Embeddings["Ollama nomic-embed-text embeddings"]
+    Embeddings --> Qdrant["Qdrant vector database"]
+    API --> Retrieval["Hybrid retrieval"]
+    Qdrant --> Retrieval
+    Retrieval --> LLM["LiteLLM-compatible text generation"]
+    LLM --> API
+    API --> Metrics["/metrics endpoint"]
+    Metrics --> Prometheus["Prometheus"]
+    Prometheus --> Grafana["Grafana dashboard"]
+    API --> Eval["RAG evaluation script"]
+    Eval --> Report["/eval/latest report"]
+```
+
 ## Repository Structure
 
 ```text
@@ -48,7 +90,9 @@ python scripts/generate_sample_pdf.py
 │   ├── README.md
 │   └── sample/
 ├── docs/
-│   └── DEPLOYMENT.md
+│   ├── assets/
+│   ├── DEPLOYMENT.md
+│   └── PORTFOLIO.md
 ├── frontend/
 │   └── src/
 ├── scripts/
@@ -119,6 +163,8 @@ docker compose up -d prometheus grafana
 
 - Prometheus: `http://127.0.0.1:9090`
 - Grafana dashboard: `http://127.0.0.1:3001/d/techspec-overview/techspec-ai-observability`
+
+This repository does not publish a public hosted demo by default. The project is prepared for local Docker-based review because the original use case is company-related and should not expose internal documents, credentials, or runtime endpoints.
 
 ### 2. Local Backend
 
@@ -213,6 +259,19 @@ The app does not report supervised model performance metrics because this projec
 - Prometheus and Grafana local monitoring dashboard
 - RAG evaluation report with answer recall, context recall, pass rate, and latency
 - frontend system panel for readiness, metrics, and latest evaluation status
+
+## Production / MLOps Features
+
+- `Dockerfile` and `docker-compose.yml` for reproducible local service startup
+- Qdrant vector database integration with FAISS fallback
+- `/health` endpoint for process-level liveness
+- `/ready` endpoint for dependency checks across LLM, embeddings, Qdrant, and session storage
+- `/metrics` endpoint with Prometheus-style request counters and latency sums
+- Prometheus scrape config and Grafana dashboard provisioning
+- API-level RAG evaluation script for regression checks
+- optional MLflow tracking for evaluation runs
+- GitHub Actions for backend tests, frontend audit, and frontend build
+- Dependabot config for Python, npm, and GitHub Actions updates
 
 ## Business Interpretation
 
