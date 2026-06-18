@@ -15,6 +15,6 @@ streamlit>=1.32
 python-telegram-bot>=21.0
 
 # Utilities
-requests>=2.31
+requests>=2.34.2
 urllib3>=2.2
 python-dotenv>=1.0
