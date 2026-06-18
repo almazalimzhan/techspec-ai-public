@@ -7,7 +7,7 @@ httpx>=0.27.0
 # Document processing and retrieval
 PyMuPDF>=1.24
 faiss-cpu>=1.8.0
-numpy>=1.26
+numpy>=2.4.6
 ollama>=0.4
 
 # Optional interfaces
